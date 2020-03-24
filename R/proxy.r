@@ -161,7 +161,7 @@ proxy_match <- function(vcf, rsid, bfile, proxies="yes", tag_kb=5000, tag_nsnp=5
 		paramRangeID=as.factor(rep(NA, nrow(ld))),  
 		REF=Biostrings::DNAStringSet(ld[["A1"]]), 
 		ALT=Biostrings::DNAStringSetList(as.list(ld[["A2"]])), 
-		QUAL=as.numeric(NA), 
+		QUAL=rep(as.numeric(NA), nrow(ld)), 
 		FILTER=rep("PASS", nrow(ld))
 	)
 	prox <- VariantAnnotation::VCF(
