@@ -41,16 +41,16 @@ get_ld_proxies <- function(rsid, bfile, searchspace=NULL, tag_kb=5000, tag_nsnp=
 		" 2>&1 > /dev/null"
 	)
 	system(cmd)
-
-	ld <- data.table::fread(paste0("gunzip -c ", outname), header=TRUE) %>%
-		dplyr::filter(`R`^2 > `tag_r2`) %>%
-		dplyr::filter(`SNP_A` != `SNP_B`) %>%
-		dplyr::mutate(PHASE=gsub("/", "", `PHASE`)) %>%
-		subset(., nchar(`PHASE`) == 4)
+	ld <- data.table::fread(cmd = paste0("gunzip -c ", outname), header=TRUE)
 	if(nrow(ld) == 0)
 	{
 		return(ld)
 	}
+        ld <- ld %>%
+		dplyr::filter(`R`^2 > `tag_r2`) %>%
+		dplyr::filter(`SNP_A` != `SNP_B`) %>%
+		dplyr::mutate(PHASE=gsub("/", "", `PHASE`)) %>%
+		subset(., nchar(`PHASE`) == 4)
 	temp <- do.call(rbind, strsplit(ld[["PHASE"]], "")) %>% dplyr::as_tibble(., .name_repair="minimal")
 	names(temp) <- c("A1", "B1", "A2", "B2")
 	ld <- cbind(ld, temp) %>% dplyr::as_tibble(., .name_repair="minimal")
@@ -162,7 +162,7 @@ proxy_match <- function(vcf, rsid, bfile, proxies="yes", tag_kb=5000, tag_nsnp=5
 		REF=Biostrings::DNAStringSet(ld[["A1"]]), 
 		ALT=Biostrings::DNAStringSetList(as.list(ld[["A2"]])), 
 		QUAL=as.numeric(NA), 
-		FILTER="PASS"
+		FILTER=rep("PASS", nrow(ld))
 	)
 	prox <- VariantAnnotation::VCF(
 		rowRanges = gr,
