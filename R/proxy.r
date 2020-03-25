@@ -51,7 +51,12 @@ get_ld_proxies <- function(rsid, bfile, searchspace=NULL, tag_kb=5000, tag_nsnp=
 		dplyr::filter(`SNP_A` != `SNP_B`) %>%
 		dplyr::mutate(PHASE=gsub("/", "", `PHASE`)) %>%
 		subset(., nchar(`PHASE`) == 4)
-	temp <- do.call(rbind, strsplit(ld[["PHASE"]], "")) %>% dplyr::as_tibble(., .name_repair="minimal")
+	if(nrow(ld) == 0)
+	{
+		return(ld)
+	}
+	temp <- do.call(rbind, strsplit(ld[["PHASE"]], "")) %>%
+            dplyr::as_tibble(., .name_repair="minimal")
 	names(temp) <- c("A1", "B1", "A2", "B2")
 	ld <- cbind(ld, temp) %>% dplyr::as_tibble(., .name_repair="minimal")
 	# ld <- dplyr::arrange(ld, desc(abs(R))) %>%
