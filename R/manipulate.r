@@ -134,15 +134,15 @@ vcf_to_granges <- function(vcf, id=NULL)
 		id <- VariantAnnotation::samples(VariantAnnotation::header(vcf))
 	}
 	stopifnot(length(id) == 1)
+        vcf <- VariantAnnotation::expand(vcf, row.names = T) 
 	a <- SummarizedExperiment::rowRanges(vcf)
-	a$`ALT` <- unlist(a$`ALT`)
 
 	if(length(VariantAnnotation::geno(vcf)) == 0)
 	{
 		return(a)
 	} else {
-		out <- VariantAnnotation::expand(vcf) %>% 
-			VariantAnnotation::geno() %>%
+            out <- vcf %>%
+                VariantAnnotation::geno() %>%
 			as.list() %>%
 			lapply(., function(x) unlist(x[,id,drop=TRUE])) %>%
 			dplyr::bind_cols()
@@ -170,9 +170,10 @@ vcf_to_granges <- function(vcf, id=NULL)
 #' @return GRanges object
 vcf_to_tibble <- function(vcf, id=NULL)
 {
-	a <- vcf_to_granges(vcf, id)
-	a[["SNP"]] <- names(vcf)
-	return(dplyr::as_tibble(a))
+	a     <- vcf_to_granges(vcf, id)
+	a$SNP <- names(a)
+        a     <- dplyr::as_tibble(a)
+	return(a)
 }
 
 
