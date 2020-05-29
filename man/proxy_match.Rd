@@ -4,15 +4,25 @@
 \alias{proxy_match}
 \title{Extract SNPs from vcf file}
 \usage{
-proxy_match(vcf, rsid, bfile, proxies = "yes", tag_kb = 5000,
-  tag_nsnp = 5000, tag_r2 = 0.6, threads = 1)
+proxy_match(
+  vcf,
+  rsid,
+  bfile = NULL,
+  proxies = "yes",
+  tag_kb = 5000,
+  tag_nsnp = 5000,
+  tag_r2 = 0.6,
+  threads = 1,
+  rsidx = NULL,
+  dbfile = NULL
+)
 }
 \arguments{
 \item{vcf}{vcf file name}
 
 \item{rsid}{list of rs IDs}
 
-\item{bfile}{ld reference panel}
+\item{bfile}{ld reference panel (plink)}
 
 \item{proxies}{="yes" If SNPs are absent then look for proxies (yes) or not (no). Can also mask all target SNPs and only return proxies (only), for testing purposes}
 
@@ -23,6 +33,10 @@ proxy_match(vcf, rsid, bfile, proxies = "yes", tag_kb = 5000,
 \item{tag_r2}{=0.6 Proxy parameter}
 
 \item{threads}{Number of threads to use (=1)}
+
+\item{rsidx}{Path to rsidx index}
+
+\item{dbfile}{ld tag database (sqlite)}
 }
 \value{
 data frame

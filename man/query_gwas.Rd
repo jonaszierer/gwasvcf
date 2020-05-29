@@ -4,10 +4,23 @@
 \alias{query_gwas}
 \title{Query data from vcf file}
 \usage{
-query_gwas(vcf, chrompos = NULL, rsid = NULL, pval = NULL,
-  id = NULL, build = "GRCh37", os = Sys.info()[["sysname"]],
-  proxies = "no", bfile = NULL, tag_kb = 5000, tag_nsnp = 5000,
-  tag_r2 = 0.6, threads = 1)
+query_gwas(
+  vcf,
+  chrompos = NULL,
+  rsid = NULL,
+  pval = NULL,
+  id = NULL,
+  rsidx = NULL,
+  build = "GRCh37",
+  os = Sys.info()[["sysname"]],
+  proxies = "no",
+  bfile = NULL,
+  dbfile = NULL,
+  tag_kb = 5000,
+  tag_nsnp = 5000,
+  tag_r2 = 0.6,
+  threads = 1
+)
 }
 \arguments{
 \item{vcf}{VCF object e.g. output from VariantAnnotation::readVcf or gwasvcftools::query_vcf}
@@ -20,6 +33,8 @@ query_gwas(vcf, chrompos = NULL, rsid = NULL, pval = NULL,
 
 \item{id}{If multiple GWAS datasets in the vcf file, the name (sample ID) from which to perform the filter}
 
+\item{rsidx}{Path to rsidx index file}
+
 \item{build}{="GRCh37" Build of vcffile}
 
 \item{os}{The operating system. Default is as detected. Determines the method used to perform query}
@@ -27,6 +42,8 @@ query_gwas(vcf, chrompos = NULL, rsid = NULL, pval = NULL,
 \item{proxies}{="no" If SNPs are absent then look for proxies (yes) or not (no). Can also mask all target SNPs and only return proxies (only), for testing purposes. Currently only possible if querying rsid.}
 
 \item{bfile}{=path to plink bed/bim/fam ld reference panel}
+
+\item{dbfile}{=path to sqlite tag snp database}
 
 \item{tag_kb}{=5000 Proxy parameter}
 

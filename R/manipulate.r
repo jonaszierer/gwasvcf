@@ -79,6 +79,7 @@ create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, s
 #'
 #' @export
 #' @return SimpleList of VCF objects
+#' @importFrom rlang .data
 merge_vcf <- function(a, b)
 {
 	a <- VariantAnnotation::expand(a)
@@ -86,7 +87,7 @@ merge_vcf <- function(a, b)
 	# o <- SummarizedExperiment::findOverlaps(a, b)
 	o <- dplyr::tibble(
 		from = which(names(a) %in% names(b)),
-		to = match(names(a)[from], names(b))
+		to = match(names(a)[.data$from], names(b))
 	)
 	a <- a[o[["from"]],]
 	b <- b[o[["to"]],]
@@ -125,10 +126,19 @@ merge_vcf <- function(a, b)
 #' @param vcf Output from readVcf
 #' @param id Only accepts one ID, so specify here if there are multiple GWAS datasets in the vcf
 #'
+#' @importFrom magrittr %>%
+#' @importFrom rlang .data
+#'
 #' @export
 #' @return GRanges object
 vcf_to_granges <- function(vcf, id=NULL)
 {
+	stopifnot(class(vcf) %in% c("ExpandedVCF", "CollapsedVCF"))
+	if(length(vcf) == 0)
+	{
+		message("VCF has length 0")
+		return(NULL)
+	}
 	if(is.null(id))
 	{
 		id <- VariantAnnotation::samples(VariantAnnotation::header(vcf))
@@ -136,6 +146,8 @@ vcf_to_granges <- function(vcf, id=NULL)
 	stopifnot(length(id) == 1)
         vcf <- VariantAnnotation::expand(vcf, row.names = T) 
 	a <- SummarizedExperiment::rowRanges(vcf)
+	a$`REF` <- as.character(a$`REF`)
+	a$`ALT` <- as.character(a$`ALT`)
 
 	if(length(VariantAnnotation::geno(vcf)) == 0)
 	{
@@ -144,17 +156,17 @@ vcf_to_granges <- function(vcf, id=NULL)
             out <- vcf %>%
                 VariantAnnotation::geno() %>%
 			as.list() %>%
-			lapply(., function(x) unlist(x[,id,drop=TRUE])) %>%
+			lapply(function(x) unlist(x[,id,drop=TRUE])) %>%
 			dplyr::bind_cols()
 		S4Vectors::values(a) <- cbind(S4Vectors::values(a), out)
 		S4Vectors::values(a)[["id"]] <- id
 
 		if("TotalCases" %in% names(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE))
 		{
-			S4Vectors::values(a)[["NC"]] <- as.numeric(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE$TotalCases) %>% rep(., length(a))
-			S4Vectors::values(a)[["SS"]] <- as.numeric(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE$TotalCases) + as.numeric(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE$TotalControls) %>% rep(., length(a))
+			S4Vectors::values(a)[["NC"]] <- as.numeric(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE$TotalCases) %>% rep(length(a))
+			S4Vectors::values(a)[["SS"]] <- as.numeric(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE$TotalCases) + as.numeric(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE$TotalControls) %>% rep(length(a))
 		} else if("TotalControls" %in% names(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE)) {
-			S4Vectors::values(a)[["SS"]] <- as.numeric(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE$TotalControls) %>% rep(., length(a))
+			S4Vectors::values(a)[["SS"]] <- as.numeric(VariantAnnotation::meta(VariantAnnotation::header(vcf))$SAMPLE$TotalControls) %>% rep(length(a))
 		}
 		return(a)
 	}
@@ -170,10 +182,13 @@ vcf_to_granges <- function(vcf, id=NULL)
 #' @return GRanges object
 vcf_to_tibble <- function(vcf, id=NULL)
 {
-	a     <- vcf_to_granges(vcf, id)
-	a$SNP <- names(a)
-        a     <- dplyr::as_tibble(a)
-	return(a)
+	a <- vcf_to_granges(vcf, id)
+	if(is.null(a))
+	{
+		return(dplyr::tibble())
+	}
+	S4Vectors::values(a)[["rsid"]] <- names(a)
+	return(dplyr::as_tibble(a))
 }
 
 

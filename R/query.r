@@ -7,10 +7,12 @@
 #' @param rsid Vector of rsids
 #' @param pval  P-value threshold (NOT -log10)
 #' @param id If multiple GWAS datasets in the vcf file, the name (sample ID) from which to perform the filter
+#' @param rsidx Path to rsidx index file
 #' @param build ="GRCh37" Build of vcffile
 #' @param os The operating system. Default is as detected. Determines the method used to perform query
 #' @param proxies ="no" If SNPs are absent then look for proxies (yes) or not (no). Can also mask all target SNPs and only return proxies (only), for testing purposes. Currently only possible if querying rsid.
 #' @param bfile =path to plink bed/bim/fam ld reference panel
+#' @param dbfile =path to sqlite tag snp database
 #' @param tag_kb =5000 Proxy parameter
 #' @param tag_nsnp =5000 Proxy parameter
 #' @param tag_r2 =0.6 Proxy parameter
@@ -18,7 +20,7 @@
 #'
 #' @export
 #' @return vcf object
-query_gwas <- function(vcf, chrompos=NULL, rsid=NULL, pval=NULL, id=NULL, build="GRCh37", os=Sys.info()[['sysname']], proxies="no", bfile=NULL, tag_kb=5000, tag_nsnp=5000, tag_r2=0.6, threads=1)
+query_gwas <- function(vcf, chrompos=NULL, rsid=NULL, pval=NULL, id=NULL, rsidx=NULL, build="GRCh37", os=Sys.info()[['sysname']], proxies="no", bfile=NULL, dbfile=NULL, tag_kb=5000, tag_nsnp=5000, tag_r2=0.6, threads=1)
 {
 	if(is.character(vcf))
 	{
@@ -61,12 +63,16 @@ query_gwas <- function(vcf, chrompos=NULL, rsid=NULL, pval=NULL, id=NULL, build=
 		stopifnot(proxies %in% c("yes", "no", "only"))
 		if(proxies != "no")
 		{
-			return(proxy_match(vcf, rsid, bfile=bfile, proxies=proxies, tag_kb=tag_kb, tag_nsnp=tag_nsnp, tag_r2=tag_r2, threads=threads))
+			return(proxy_match(vcf, rsid, bfile=bfile, dbfile=dbfile, proxies=proxies, tag_kb=tag_kb, tag_nsnp=tag_nsnp, tag_r2=tag_r2, threads=threads))
 		}
 		if(!fileflag)
 		{
 			return(query_rsid_vcf(rsid, vcf))
 		} else {
+			if(!is.null(rsidx))
+			{
+				return(query_rsid_rsidx(rsid, vcf, id, rsidx))
+			}
 			if(!check_bcftools())
 			{
 				return(query_rsid_file(rsid, vcf, id, build))
@@ -121,9 +127,9 @@ parse_chrompos <- function(chrompos, radius=NULL)
 	{
 		if(!is.null(radius))
 		{
-			chrompos <- GRanges(
-				seqnames = seqnames(chrompos),
-				ranges = IRanges(
+			chrompos <- GenomicRanges::GRanges(
+				seqnames = GenomeInfoDb::seqnames(chrompos),
+				ranges = IRanges::IRanges(
 					start = pmax(chrompos@start - radius, 0),
 					end = chrompos@end + radius
 				),
@@ -393,4 +399,42 @@ query_chrompos_bcftools <- function(chrompos, vcffile, id=NULL)
 	unlink(paste0(tmp, ".snplist"))
 	return(o)
 }
+
+
+#' Query rsid from file using rsidx index
+#'
+#' See create_rsidx_index
+#'
+#' @param rsid Vector of rsids
+#' @param vcffile Path to .vcf.gz GWAS summary data file
+#' @param id If multiple GWAS datasets in the vcf file, the name (sample ID) from which to perform the filter
+#' @param rsidx Path to rsidx index file
+#'
+#' @export
+#' @return vcf object
+query_rsid_rsidx <- function(rsid, vcffile, id=NULL, rsidx)
+{
+	out <- query_rsidx(rsid, rsidx)
+	return(
+		query_gwas(vcffile, chrompos=data.frame(chrom=out$chrom, start=out$coord, end=out$coord), id=id)
+	)
+}
+
+#' Query rsidx
+#'
+#' @param rsid Vector of rsids
+#' @param rsidx Path to rsidx index file
+#'
+#' @export
+#' @return data frame
+query_rsidx <- function(rsid, rsidx)
+{
+	conn <- RSQLite::dbConnect(RSQLite::SQLite(), rsidx)
+	numid <- gsub("rs", "", rsid) %>% paste(.data, collapse=",")
+	query <- paste0("SELECT DISTINCT * FROM rsid_to_coord WHERE rsid IN (", numid, ")")
+	out <- RSQLite::dbGetQuery(conn, query)
+	RSQLite::dbDisconnect(conn)
+	return(out)
+}
+
 

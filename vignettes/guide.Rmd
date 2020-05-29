@@ -171,11 +171,28 @@ vcf
 
 It's possible to have multiple GWAS studies per vcf. You can specify specific GWAS studies to read in using e.g.
 
-```r
+```{r}
 vcf <- query_gwas(vcffile, rsid=c("rs3128126", "rs3121561", "rs3813193"), id="IEU-a-2")
 ```
 
 Note that querying by chrompos is the fastest way to deal with VCFs, use this over rsid where possible when speed is an issue.
+
+
+## Indexing rsid values
+
+Querying by rsid is slow. If a large number of queries by rsid are to be performed then it could be worth generating an index which would speed up the querying. This approach uses [SQLite](https://www.sqlite.org/index.html) to create a local database, linking rsid to chromosome and position. It strips out the 'rs' from the rs identifiers to make fast searchers by integer. The concept is based on that developed here: [bioforensics/rsidx](https://github.com/bioforensics/rsidx).
+
+To create the index:
+
+```{r}
+create_rsidx_index_from_vcf(vcffile, "index.rsidx")
+```
+
+To query using the index:
+
+```{r}
+vcf <- query_gwas(vcffile, rsid=c("rs3128126", "rs3121561", "rs3813193"), rsidx="index.rsidx")
+```
 
 
 ## A note about chrompos
@@ -205,6 +222,14 @@ Querying by p-value or rsid is also possible but is slower as only chrompos is i
 
 If a set of rsids are requested from a vcf but some are absent, a reference panel can be used to search for LD proxies, extract them, and align the effects and alleles against the original variants that were requested.
 
+There are two ways to perform the LD proxy search:
+
+- using a set of genotyped samples as an LD reference panel (e.g. 1000 genomes data) - this is slow but relatively convenient
+- compiling an LD tag list from an LD reference panel - once generated this is very fast
+
+
+### Using an LD reference panel
+
 An LD reference panel can be obtained from here: [http://fileserve.mrcieu.ac.uk/ld/data_maf0.01_rs_ref.tgz](http://fileserve.mrcieu.ac.uk/ld/data_maf0.01_rs_ref.tgz). This dataset comprises Europeans from the 1000 genomes project, in plink format, and including only SNPs with MAF > 0.01, and with the reference alleles aligned to the human genome reference sequence. For this vignette we can use a small subset of that dataset:
 
 ```{r}
@@ -223,8 +248,6 @@ The rs4442317 variant is not present in the vcf file, i.e. if we query that vari
 ```{r}
 query_gwas(vcffile, rsid="rs4442317") %>% nrow
 ```
-
-
 
 ```{r}
 vcf <- query_gwas(vcffile, rsid="rs4442317", proxies="yes", bfile=ldfile, tag_r2=0.05)
@@ -250,6 +273,38 @@ index <- match(names(b), names(a))
 plot(vcf_to_granges(b)$ES, vcf_to_granges(a)$ES[index])
 ```
 
+### Compiling a list of tagging variants
+
+Using the LD reference panel described above, it is possible to create a sqlite tag reference panel using the following commands. First get an example LD reference panel:
+
+```{r}
+ldfile <- system.file("extdata", "eur.bed", package="gwasvcf") %>% 
+  gsub(".bed", "", .)
+```
+
+We also need to provide a path to the plink binary used to generate LD calculations. This can be done through the `genetics.binaRies` package as with bcftools
+
+```{r}
+set_plink()
+```
+
+Now generate the tagging database
+
+```{r}
+dbfile <- tempfile()
+create_ldref_sqlite(ldfile, dbfile, tag_r2 = 0.05)
+```
+
+Perform the query
+
+```{r}
+vcf <- query_gwas(vcffile, rsid="rs4442317", proxies="yes", dbfile=dbfile, tag_r2=0.05)
+vcf %>% vcf_to_granges()
+```
+
+```{r, echo=FALSE}
+unlink(dbfile)
+```
 
 ## Creating the VCF object from a data frame
 

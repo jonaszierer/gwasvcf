@@ -20,6 +20,7 @@ Imports:
   GenomicRanges,
   SummarizedExperiment,
   VariantAnnotation,
+  GenomeInfoDb,
   Rhtslib,
   Rsamtools,
   tidyr,
@@ -32,7 +33,9 @@ Imports:
   jsonlite,
   coloc,
   genetics.binaRies,
-  testthat
+  testthat,
+  RSQLite,
+  rlang
 Remotes:
   github::explodecomputer/genetics.binaRies,
   bioc::3.10/BiocGenerics,
@@ -40,6 +43,7 @@ Remotes:
   bioc::3.10/S4Vectors,
   bioc::3.10/IRanges,
   bioc::3.10/GenomicRanges,
+  bioc::3.10/GenomeInfoDb,
   bioc::3.10/SummarizedExperiment,
   bioc::3.10/Rhtslib,
   bioc::3.10/Rsamtools,
@@ -47,7 +51,7 @@ Remotes:
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: false
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.0
 Suggests: 
     knitr,
     rmarkdown
