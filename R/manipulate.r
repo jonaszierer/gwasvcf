@@ -36,7 +36,7 @@ create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, s
 	gen <- S4Vectors::SimpleList(gen)
 
         info <- S4Vectors::DataFrame(AF=rep(NA, nsnp))
-        if(!is.null(ea_af)) info[["AF"]] <- IRanges::NumericList(ea_af, compress = F)
+        if(!is.null(ea_af)) info[["AF"]] <- ea_af
         
 	gr <- GenomicRanges::GRanges(chrom, IRanges::IRanges(start=pos, end=pos + pmax(nchar(nea), nchar(ea)) - 1, names=snp))
 	coldata <- S4Vectors::DataFrame(Samples = length(name), row.names=name)
