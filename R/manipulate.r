@@ -24,10 +24,10 @@ create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, s
 	}
 	nsnp <- length(chrom)
 	gen <- list()
-	if(!is.null(ea_af)) gen[["AF"]] <- matrix(ea_af, nsnp)
 	if(!is.null(effect)) gen[["ES"]] <- matrix(effect, nsnp)
 	if(!is.null(se)) gen[["SE"]] <- matrix(se, nsnp)
 	if(!is.null(pval)) gen[["LP"]] <- matrix(-log10(pval), nsnp)
+	if(!is.null(ea_af)) gen[["AF"]] <- matrix(ea_af, nsnp)
 	if(!is.null(n)) gen[["SS"]] <- matrix(n, nsnp)
 	if(!is.null(zscore)) gen[["EZ"]] <- matrix(zscore, nsnp)
 	if(!is.null(info)) gen[["SI"]] <- matrix(info, nsnp)
@@ -36,7 +36,7 @@ create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, s
 	gen <- S4Vectors::SimpleList(gen)
 
         info <- S4Vectors::DataFrame(AF=rep(NA, nsnp))
-        if(!is.null(ea_af)) info[["AF"]] <- ea_af
+        if(!is.null(ea_af)) info[["AF"]] <- IRanges::NumericList(ea_af, compress = F)
         
 	gr <- GenomicRanges::GRanges(chrom, IRanges::IRanges(start=pos, end=pos + pmax(nchar(nea), nchar(ea)) - 1, names=snp))
 	coldata <- S4Vectors::DataFrame(Samples = length(name), row.names=name)

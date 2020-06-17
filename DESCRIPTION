@@ -1,6 +1,6 @@
 Package: gwasvcf
 Title: Tools for dealing with GWAS summary data in VCF format
-Version: 0.1.4
+Version: 0.1.5
 Authors@R: 
     person(given = "Gibran",
            family = "Hemani",
