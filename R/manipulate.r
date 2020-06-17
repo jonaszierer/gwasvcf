@@ -15,7 +15,7 @@
 #'
 #' @export
 #' @return vcf object
-create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, se=NULL, pval=NULL, n=NULL, ncase=NULL, name=NULL)
+create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, se=NULL, zscore = NULL, info = NULL, id = NULL, pval=NULL, n=NULL, ncase=NULL, name=NULL)
 {
 	stopifnot(length(chrom) == length(pos))
 	if(is.null(snp))
@@ -29,9 +29,15 @@ create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, s
 	if(!is.null(se)) gen[["SE"]] <- matrix(se, nsnp)
 	if(!is.null(pval)) gen[["LP"]] <- matrix(-log10(pval), nsnp)
 	if(!is.null(n)) gen[["SS"]] <- matrix(n, nsnp)
+	if(!is.null(zscore)) gen[["EZ"]] <- matrix(zscore, nsnp)
+	if(!is.null(info)) gen[["SI"]] <- matrix(info, nsnp)
 	if(!is.null(ncase)) gen[["NC"]] <- matrix(ncase, nsnp)
+	if(!is.null(id)) gen[["ID"]] <- matrix(id, nsnp)
 	gen <- S4Vectors::SimpleList(gen)
 
+        info <- S4Vectors::DataFrame(AF=rep(NA, nsnp))
+        if(!is.null(ea_af)) info[["AF"]] <- ea_af
+        
 	gr <- GenomicRanges::GRanges(chrom, IRanges::IRanges(start=pos, end=pos + pmax(nchar(nea), nchar(ea)) - 1, names=snp))
 	coldata <- S4Vectors::DataFrame(Samples = length(name), row.names=name)
 
@@ -42,19 +48,31 @@ create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, s
 		sample = name
 	)
 	VariantAnnotation::geno(hdr) <- S4Vectors::DataFrame(
-		Number = c("A", "A", "A", "A", "A", "A"),
-		Type = c("Float", "Float", "Float", "Float", "Float", "Float"),
+		Number = c("A", "A", "A", "A", "A", "A", "A", "A", "A"),
+		Type = c("Float", "Float", "Float", "Float", "Float", "Float", "Float", "Float", "String"),
 		Description = c(
 			"Effect size estimate relative to the alternative allele",
 			"Standard error of effect size estimate",
 			"-log10 p-value for effect estimate",
 			"Alternate allele frequency in the association study",
-			"Sample size used to estimate genetic effect",
-			"Number of cases used to estimate genetic effect"
+                        "Sample size used to estimate genetic effect",
+                        "Z-score provided if it was used to derive the EFFECT and SE fields",
+                        "Accuracy score of summary data imputation",
+                        "Number of cases used to estimate genetic effect",
+                        "Study variant identifier"
 		),
-		row.names=c("ES", "SE", "LP", "AF", "SS", "NC")
+		row.names=c("ES", "SE", "LP", "AF", "SS", "EZ", "SI", "NC", "ID")
 	)
 	VariantAnnotation::geno(hdr) <- subset(VariantAnnotation::geno(hdr), rownames(VariantAnnotation::geno(hdr)) %in% names(gen))
+
+        VariantAnnotation::info(hdr) <- S4Vectors::DataFrame(
+		Number = c("A"),
+		Type = c("Float"),
+		Description = c(
+			"Allele Frequency"
+		),
+		row.names=c("AF")
+	)
 
 	vcf <- VariantAnnotation::VCF(
 		rowRanges = gr,
@@ -62,7 +80,8 @@ create_vcf <- function(chrom, pos, nea, ea, snp=NULL, ea_af=NULL, effect=NULL, s
 		exptData = list(
 			header = hdr
 		),
-		geno = gen
+		geno = gen,
+                info = info
 	)
 	VariantAnnotation::alt(vcf) <- Biostrings::DNAStringSetList(as.list(ea))
 	VariantAnnotation::ref(vcf) <- Biostrings::DNAStringSet(nea)
